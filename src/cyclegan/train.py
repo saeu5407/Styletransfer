@@ -10,9 +10,9 @@ from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 from torch.utils.tensorboard import SummaryWriter
 
-from cyclegan.datasets import UnpairedDataset, ClabDataset
-from cyclegan.networks import CycleGANGenerator, CycleGANDiscriminator
-from cyclegan.utils import init_weight, ImagePool, LossDisplayer
+from datasets import CycleGANDataset
+from networks import CycleGANGenerator, CycleGANDiscriminator
+from utils import init_weight, ImagePool, LossDisplayer
 
 import glob
 import time
@@ -21,16 +21,17 @@ from datetime import timedelta
 parser = argparse.ArgumentParser()
 parser.add_argument("--epoch", type=int, default=500)
 parser.add_argument("--batch_size", type=int, default=1)
-parser.add_argument("--dataset_path", type=str, default=os.path.join(os.getcwd().split("src")[0],"datasets","mitty","image"))
-parser.add_argument("--checkpoint_path", type=str, default=None)
+parser.add_argument("--dataset_path", type=str,
+                    default=os.path.join(os.getcwd().split("src")[0], "datasets", "horse2zebra"))
 parser.add_argument("--size", type=int, default=256)
 parser.add_argument("--lambda_ide", type=float, default=10)
 parser.add_argument("--lr", type=float, default=2e-4)
 parser.add_argument("--pool_size", type=int, default=50)
 parser.add_argument("--identity", action="store_true")
+parser.add_argument("--class_b", type=str, default='trainA')
+parser.add_argument("--class_a", type=str, default='trainB')
 
 args = parser.parse_args()
-
 
 def train():
 
@@ -72,14 +73,10 @@ def train():
             transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)),
         ]
     )
-    if args.dataset_path.find('mitty') != -1:
-        dataloader = DataLoader(
-            ClabDataset(args.dataset_path, ["study", "phone"], transform), num_workers=2
-        )
-    else:
-        dataloader = DataLoader(
-            UnpairedDataset(args.dataset_path, ["trainA", "trainB"], transform)
-        )
+
+    dataloader = DataLoader(
+        CycleGANDataset(args.dataset_path, [args.class_a, args.class_b], transform))
+
     dataset_name = os.path.basename(args.dataset_path)
 
     pool_fake_A = ImagePool(args.pool_size)
@@ -114,8 +111,8 @@ def train():
     print("CHECKPOINT DIR")
     checkpoint_dir = os.path.join(os.getcwd().split("src")[0], "checkpoint", dataset_name)
     print(checkpoint_dir)
-    # os.makedirs(os.path.join(os.getcwd().split("src")[0], "checkpoint", dataset_name), exist_ok=True)
 
+    # Checkpoint 있을 시 해당 체크포인트부터 다시 진행
     if len(glob.glob(os.path.join(checkpoint_dir, '*.pth'))) >= 1:
         checkpoint = torch.load(glob.glob(os.path.join(checkpoint_dir, '*.pth'))[-1], map_location=device)
         epoch = checkpoint['epoch']
@@ -132,6 +129,7 @@ def train():
         netG_B2A.train()
         netD_A.train()
         netD_B.train()
+        print("start checkpoint : {}".format(glob.glob(os.path.join(checkpoint_dir, '*.pth'))[-1]))
 
     # Training
     while epoch < args.epoch:
@@ -224,7 +222,7 @@ def train():
         disp.reset()
 
         # Save checkpoint
-        if epoch % 10 == 0 or epoch == 1:
+        if epoch % 50 == 0 or epoch == 1:
             torch.save(
                 {
                     "netG_A2B_state_dict": netG_A2B.state_dict(),
@@ -249,5 +247,4 @@ def train():
 
 
 if __name__ == "__main__":
-
     train()

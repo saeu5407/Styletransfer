@@ -1,4 +1,3 @@
-import os
 import glob
 import torch
 from PIL import Image
@@ -6,9 +5,7 @@ from PIL import Image
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as F
 
-from cyclegan.networks import CycleGANGenerator, CycleGANDiscriminator
-
-import matplotlib.pyplot as plt
+from networks import CycleGANGenerator, CycleGANDiscriminator
 
 
 def generate_image(input_image, netG_A2B, netG_B2A, device, type='A2B'):
