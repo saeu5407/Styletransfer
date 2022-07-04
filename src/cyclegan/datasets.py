@@ -2,6 +2,7 @@ import random
 import glob
 import os
 from PIL import Image
+import torch
 from torch.utils.data import DataLoader
 
 def pil_loader(path):
@@ -54,7 +55,9 @@ class CycleGANDataset(DataLoader):
     def __len__(self):
         return self.len_image
 
-    def __getitem__(self, index_A):
-        item_A = self.transforms(Image.open(self.image_path_A[index_A]))
-        item_B = self.transforms(Image.open(self.image_path_B[index_A]))
-        return [item_A, item_B]
+    def __getitem__(self, idx):
+
+        item_a = self.transforms(Image.open(self.image_path_A[idx]))
+        item_b = self.transforms(Image.open(self.image_path_B[idx]))
+
+        return [item_a, item_b]

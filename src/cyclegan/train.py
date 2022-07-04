@@ -19,7 +19,7 @@ import time
 from datetime import timedelta
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--epoch", type=int, default=500)
+parser.add_argument("--epoch", type=int, default=1000)
 parser.add_argument("--batch_size", type=int, default=1)
 parser.add_argument("--dataset_path", type=str,
                     default=os.path.join(os.getcwd().split("src")[0], "datasets", "horse2zebra"))
@@ -28,8 +28,8 @@ parser.add_argument("--lambda_ide", type=float, default=10)
 parser.add_argument("--lr", type=float, default=2e-4)
 parser.add_argument("--pool_size", type=int, default=50)
 parser.add_argument("--identity", action="store_true")
-parser.add_argument("--class_b", type=str, default='trainA')
-parser.add_argument("--class_a", type=str, default='trainB')
+parser.add_argument("--class_a", type=str, default='trainA')
+parser.add_argument("--class_b", type=str, default='trainB')
 
 args = parser.parse_args()
 
@@ -110,6 +110,7 @@ def train():
 
     print("CHECKPOINT DIR")
     checkpoint_dir = os.path.join(os.getcwd().split("src")[0], "checkpoint", dataset_name)
+    os.makedirs(checkpoint_dir, exist_ok=True)
     print(checkpoint_dir)
 
     # Checkpoint 있을 시 해당 체크포인트부터 다시 진행
@@ -145,8 +146,9 @@ def train():
             real_B = real_B.to(device)
 
             # Forward gan_classifier
-            fake_B = netG_A2B(real_A)
             fake_A = netG_B2A(real_B)
+            fake_B = netG_A2B(real_A)
+
             cycle_A = netG_B2A(fake_B)
             cycle_B = netG_A2B(fake_A)
 
@@ -237,7 +239,7 @@ def train():
                     "optim_D_A": optim_D_A.state_dict(),
                     "optim_D_B": optim_D_B.state_dict()
                 },
-                os.path.join(os.getcwd().split("src")[0] + "/checkpoint", dataset_name, str(epoch) + ".pth"),
+                os.path.join(os.getcwd().split("src")[0], "checkpoint", dataset_name, str(epoch) + ".pth"),
             )
 
         # Calculate time required

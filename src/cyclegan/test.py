@@ -1,6 +1,10 @@
+import argparse
+import os
 import glob
 import torch
 from PIL import Image
+
+import matplotlib.pyplot as plt
 
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as F
@@ -8,21 +12,30 @@ import torchvision.transforms.functional as F
 from networks import CycleGANGenerator, CycleGANDiscriminator
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--dataset_path", type=str, default=os.path.join(os.getcwd().split(os.sep + "src")[0], "datasets", "apple2orange"))
+parser.add_argument("--class_a", type=str, default='testA')
+parser.add_argument("--class_b", type=str, default='testB')
+args = parser.parse_args()
+
+
 def generate_image(input_image, netG_A2B, netG_B2A, device, type='A2B'):
 
     image2tensor = transforms.ToTensor()
-    tensor2image = transforms.ToPILImage()
+    tensor2image = transforms.Compose(
+        [
+            transforms.Normalize(mean=(-1, -1, -1), std=(2, 2, 2)),
+            transforms.ToPILImage(),
+        ]
+    )
 
     image = Image.open(input_image)
 
     # image2tensor
-    image_tensor = F.resize(image, (256, 256))
-    image_tensor = image2tensor(image_tensor)
+    image = F.resize(image, (256, 256))
+    image_tensor = image2tensor(image)
     image_tensor = F.normalize(image_tensor, (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     image_tensor = image_tensor.unsqueeze(0)
-
-    # resize image
-    image = tensor2image(image_tensor.squeeze(0))
 
     # model predict
     image_tensor = image_tensor.to(device)
@@ -38,7 +51,7 @@ def generate_image(input_image, netG_A2B, netG_B2A, device, type='A2B'):
     return image, generate_image, regenerate_image
 
 
-def mitty_test(dataset_name, img_path, cat_type=['study', 'phone']):
+def cyclegan_test(dataset_name, img_path, cat_type=['study', 'phone']):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
@@ -49,10 +62,12 @@ def mitty_test(dataset_name, img_path, cat_type=['study', 'phone']):
     netD_A = CycleGANDiscriminator().to(device)
     netD_B = CycleGANDiscriminator().to(device)
 
-    if len(glob.glob(os.path.join(os.path.join(os.getcwd().split("src")[0], "checkpoint", dataset_name), '*.pth'))) >= 1:
-        print("Use .pth")
-        checkpoint = torch.load(glob.glob(os.path.join(os.path.join(os.getcwd().split("src")[0], "checkpoint", dataset_name), '*.pth'))[-1], map_location=device)
-        # checkpoint["model"] = {key.replace("module.", ""): value for key, value in checkpoint["model"].items()}
+    checkpoint_path = glob.glob(os.path.join(os.getcwd().split(os.sep + "src")[0], "checkpoint", dataset_name, '*.pth'))
+    checkpoint_path.sort(reverse=False)
+
+    if len(checkpoint_path) >= 1:
+        print("Use {}".format(os.path.basename(checkpoint_path[-1])))
+        checkpoint = torch.load(checkpoint_path[-1], map_location=device)
         netG_A2B.load_state_dict(checkpoint["netG_A2B_state_dict"])
         netG_B2A.load_state_dict(checkpoint["netG_B2A_state_dict"])
         netD_A.load_state_dict(checkpoint["netD_A_state_dict"])
@@ -66,49 +81,35 @@ def mitty_test(dataset_name, img_path, cat_type=['study', 'phone']):
     cat1_image = glob.glob(os.path.join(img_path, cat_type[0], '*'))
     cat2_image = glob.glob(os.path.join(img_path, cat_type[1], '*'))
 
-    B1, BGA1, BGAGB1 = generate_image(cat1_image[1], netG_A2B, netG_B2A, device, "B2A")
-    A1, AGB1, AGBGA1 = generate_image(cat2_image[1], netG_A2B, netG_B2A, device, "A2B")
+    A1, AGB1, AGBGA1 = generate_image(cat1_image[1], netG_A2B, netG_B2A, device, "A2B")
+    B1, BGA1, BGAGB1 = generate_image(cat2_image[1], netG_A2B, netG_B2A, device, "B2A")
 
-    B1.save('B1.png')
-    BGA1.save('BGA1.png')
-    BGAGB1.save('BGAGB1.png')
-    A1.save('A1.png')
-    AGB1.save('AGB1.png')
-    AGBGA1.save('AGBGA1.png')
+    A1.save(os.path.join(os.getcwd().split(os.sep + "src")[0], "datasets", dataset_name, 'A_original.png'))
+    AGB1.save(os.path.join(os.getcwd().split(os.sep + "src")[0], "datasets", dataset_name, 'A2B_generate.png'))
+    AGBGA1.save(os.path.join(os.getcwd().split(os.sep + "src")[0], "datasets", dataset_name, 'A2B2A_generate.png'))
+    B1.save(os.path.join(os.getcwd().split(os.sep + "src")[0], "datasets", dataset_name, 'B_original.png'))
+    BGA1.save(os.path.join(os.getcwd().split(os.sep + "src")[0], "datasets", dataset_name, 'B2A_generate.png'))
+    BGAGB1.save(os.path.join(os.getcwd().split(os.sep + "src")[0], "datasets", dataset_name, 'B2A2B_generate.png'))
 
-    """
-    plt.figure()
-    fig, ax = plt.subplots(2,3)
-    ax[0,0].imshow(A1)
-    ax[0,1].imshow(AGB1)
-    ax[0,2].imshow(AGBGA1)
+    fig, ((ax1, ax2, ax3), (ax4, ax5, ax6)) = plt.subplots(nrows=2, ncols=3, figsize=(15,10))
+    ax1.imshow(A1)
+    ax2.imshow(AGB1)
+    ax3.imshow(AGBGA1)
 
-    ax[1,0].imshow(B1)
-    ax[1,1].imshow(BGA1)
-    ax[1,2].imshow(BGAGB1)
+    ax4.imshow(B1)
+    ax5.imshow(BGA1)
+    ax6.imshow(BGAGB1)
     plt.show()
-    """
 
 
 if __name__ == "__main__":
-
-    data = 'mitty'
-
-    import os
 
     os.environ["MKL_NUM_THREADS"] = "1"
     os.environ["NUMEXPR_NUM_THREADS"] = "1"
     os.environ["OMP_NUM_THREADS"] = "1"
 
-    # param
-    if data == 'mitty':
-        dataset_name = "image"
-        img_path = os.path.join(os.getcwd().split("src")[0], "datasets", "mitty", "image")
-        cat_type = ['study', 'phone']
-    else:
-        dataset_name = "horse2zebra"
-        img_path = os.path.join(os.getcwd().split("src")[0], "datasets", "horse2zebra")
-        cat_type = ['trainA', 'trainB']
+    dataset_name = os.path.basename(args.dataset_path)
+    class_path = [args.class_a, args.class_b]
 
     # test
-    mitty_test(dataset_name, img_path, cat_type)
+    cyclegan_test(dataset_name=dataset_name, img_path=args.dataset_path, cat_type=class_path)

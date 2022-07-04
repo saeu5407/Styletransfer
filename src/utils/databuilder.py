@@ -1,135 +1,50 @@
 import os
 import glob
-import cv2 as cv
+import cv2
 import pandas as pd
 import random
 
-def mitty_divide_image_labels(data_path, name, video_idx, label_csv):
-
-    # Make Dir
-    make_dir(path=os.path.join(data_path, name))
-    for dir in label_csv['label'].unique():
-        make_dir(os.path.join(data_path, name, dir))
-
-    # Make Labeled Image Data
-    cap = cv.VideoCapture(video_idx)
-
-    index = 0
-    token = True
-    while True:
-
-        ret, frame = cap.read()
-        index += 1
-
-        if index % 10000 == 0:
-            print('>>> Index {} Save'.format(index))
-
-        if not ret or not token:
-            print('>>> Save Image | {}'.format(name))
-            print('>>> Final Index is | {}'.format(index))
-            cap.release()
-            break
-
-        # Labeling & Save Images
-        labels = label_csv.loc[(label_csv.start_index <= index) & (label_csv.end_index >= index), 'label']
-        idx_len = label_csv.loc[(label_csv.start_index <= index) & (label_csv.end_index >= index), 'end_index'] - \
-                  label_csv.loc[(label_csv.start_index <= index) & (label_csv.end_index >= index), 'start_index']
-
-        if len(labels) > 0:
-            if idx_len.values[0] >= 1000:
-                if index % 50 == 0:
-                    label_path = os.path.join(data_path, name, labels.values[0], str(index) + '.png')
-                    cv.imwrite(label_path, frame)
-            else:
-                label_path = os.path.join(data_path, name, labels.values[0], str(index) + '.png')
-                cv.imwrite(label_path, frame)
-
-        # Quit if not labeled on idx_data
-        if label_csv.end_index.max() <= index:
-            token = False
-
-
-def mitty_image_labels(data_path, name, video_idx, label_csv):
-
-    # Make Dir
-    make_dir(os.path.join(data_path, 'image'))
-    for dir in label_csv['label'].unique():
-        make_dir(os.path.join(data_path, 'image', dir))
-
-    # Make Labeled Image Data
-    cap = cv.VideoCapture(video_idx)
-
-    index = 0
-    token = True
-    while True:
-
-        ret, frame = cap.read()
-        index += 1
-
-        if index % 10000 == 0:
-            print('>>> Index {} Save'.format(index))
-
-        if not ret or not token:
-            print('>>> Save Image | {}'.format(name))
-            print('>>> Final Index is | {}'.format(index))
-            cap.release()
-            break
-
-        # Labeling & Save Images
-        labels = label_csv.loc[(label_csv.start_index <= index) & (label_csv.end_index >= index), 'label']
-        idx_len = label_csv.loc[(label_csv.start_index <= index) & (label_csv.end_index >= index), 'end_index'] - \
-                  label_csv.loc[(label_csv.start_index <= index) & (label_csv.end_index >= index), 'start_index']
-
-        if len(labels) > 0:
-            if idx_len.values[0] >= 1000:
-                if index % 10 == 0:
-                    label_path = os.path.join(data_path, 'image', labels.values[0], name + '__' + str(index) + '.png')
-                    cv.imwrite(label_path, frame)
-            elif idx_len.values[0] >= 500:
-                if index % 5 == 0:
-                    label_path = os.path.join(data_path, 'image', labels.values[0], name + '__' + str(index) + '.png')
-                    cv.imwrite(label_path, frame)
-            else:
-                label_path = os.path.join(data_path, 'image', labels.values[0], name + '__' + str(index) + '.png')
-                cv.imwrite(label_path, frame)
-
-        # Quit if not labeled on idx_data
-        if label_csv.end_index.max() <= index:
-            token = False
-
-
 def make_dir(path):
-
     if not os.path.isdir(path):
         os.mkdir(path)
 
+def make_image(data_path, video_path, label_name, index=0, save_seq=50):
+    # Make Dir
+    make_dir(path=os.path.join(data_path, label_name))
+
+    # Make Image Data
+    cap = cv2.VideoCapture(video_path)
+
+    while True:
+
+        ret, frame = cap.read()
+        index += 1
+
+        if index % 10000 == 0:
+            print('>>> Index {} Save'.format(index))
+
+        if not ret:
+            print('>>> Save Image | {}'.format(label_name))
+            print('>>> Final Index is | {}'.format(index))
+            cap.release()
+            break
+
+        if index % save_seq == 0:
+            label_path = os.path.join(data_path, label_name, str(label_name) + '_' + str(index) + '.png')
+            cv2.imwrite(label_path, frame)
+
+    return index
 
 if __name__ == '__main__':
 
     # Data Path
-    data_path = os.path.join(os.getcwd().split('/src')[0], 'datasets', 'mitty')
-    print(data_path)
+    data_path = os.path.join(os.getcwd().split('/src')[0], 'datasets')
 
-    # Find Video, Label Data
-    label_list = glob.glob(os.path.join(data_path, 'labels', '*.csv'))
-    video_list = glob.glob(os.path.join(data_path, 'video', '*.mp4'))
+    # Find Video Data
+    video_list = glob.glob(os.path.join(data_path, '*.mp4'))
+    video_path = video_list[0]
 
-    # Loop
-    for idx in range(0, len(label_list)):
-
-        # Load Labels
-        print(label_list[idx])
-        name = os.path.basename(label_list[idx]).split('.csv')[0]
-        try:
-            label_csv = pd.read_csv(label_list[idx])
-        except:
-            label_csv = pd.read_csv(label_list[idx], encoding='cp949')
-
-        # Load Video
-        video_idx = 0
-        for videoidx in video_list:
-            if videoidx.find(str(name)) != -1:
-                video_idx = videoidx
-
-        if video_idx != 0:
-            mitty_image_labels(data_path, name, video_idx, label_csv)
+    # Main
+    idx = make_image(data_path=data_path, video_path=video_list[0], label_name='inf')
+    make_image(data_path=data_path, video_path=video_list[1], label_name='inf', index=idx+1)
+    make_image(data_path=data_path, video_path=video_list[2], label_name='ani', save_seq=20)
