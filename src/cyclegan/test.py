@@ -4,6 +4,7 @@ import glob
 import torch
 from PIL import Image
 
+import pandas as pd
 import matplotlib.pyplot as plt
 
 import torchvision.transforms as transforms
@@ -16,6 +17,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--dataset_path", type=str, default=os.path.join(os.getcwd().split(os.sep + "src")[0], "datasets", "apple2orange"))
 parser.add_argument("--class_a", type=str, default='testA')
 parser.add_argument("--class_b", type=str, default='testB')
+parser.add_argument("--idx", type=int, default=2)
 args = parser.parse_args()
 
 
@@ -51,7 +53,7 @@ def generate_image(input_image, netG_A2B, netG_B2A, device, type='A2B'):
     return image, generate_image, regenerate_image
 
 
-def cyclegan_test(dataset_name, img_path, cat_type=['study', 'phone']):
+def cyclegan_test(dataset_name, img_path, cat_type=['study', 'phone'], idx=1):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
@@ -63,7 +65,9 @@ def cyclegan_test(dataset_name, img_path, cat_type=['study', 'phone']):
     netD_B = CycleGANDiscriminator().to(device)
 
     checkpoint_path = glob.glob(os.path.join(os.getcwd().split(os.sep + "src")[0], "checkpoint", dataset_name, '*.pth'))
-    checkpoint_path.sort(reverse=False)
+    checkpoint_path = pd.DataFrame({'path' : checkpoint_path, 'name' : list(map(lambda x : os.path.basename(x), checkpoint_path))})
+    checkpoint_path.sort_values('name', ascending=True, inplace=True)
+    checkpoint_path = list(checkpoint_path.path)
 
     if len(checkpoint_path) >= 1:
         print("Use {}".format(os.path.basename(checkpoint_path[-1])))
@@ -81,8 +85,8 @@ def cyclegan_test(dataset_name, img_path, cat_type=['study', 'phone']):
     cat1_image = glob.glob(os.path.join(img_path, cat_type[0], '*'))
     cat2_image = glob.glob(os.path.join(img_path, cat_type[1], '*'))
 
-    A1, AGB1, AGBGA1 = generate_image(cat1_image[1], netG_A2B, netG_B2A, device, "A2B")
-    B1, BGA1, BGAGB1 = generate_image(cat2_image[1], netG_A2B, netG_B2A, device, "B2A")
+    A1, AGB1, AGBGA1 = generate_image(cat1_image[idx], netG_A2B, netG_B2A, device, "A2B")
+    B1, BGA1, BGAGB1 = generate_image(cat2_image[idx], netG_A2B, netG_B2A, device, "B2A")
 
     A1.save(os.path.join(os.getcwd().split(os.sep + "src")[0], "datasets", dataset_name, 'A_original.png'))
     AGB1.save(os.path.join(os.getcwd().split(os.sep + "src")[0], "datasets", dataset_name, 'A2B_generate.png'))
@@ -112,4 +116,4 @@ if __name__ == "__main__":
     class_path = [args.class_a, args.class_b]
 
     # test
-    cyclegan_test(dataset_name=dataset_name, img_path=args.dataset_path, cat_type=class_path)
+    cyclegan_test(dataset_name=dataset_name, img_path=args.dataset_path, cat_type=class_path, idx=args.idx)

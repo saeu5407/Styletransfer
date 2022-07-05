@@ -109,13 +109,18 @@ def train():
     )
 
     print("CHECKPOINT DIR")
-    checkpoint_dir = os.path.join(os.getcwd().split("src")[0], "checkpoint", dataset_name)
+    checkpoint_dir = os.path.join(os.getcwd().split(os.sep + "src")[0], "checkpoint", dataset_name)
     os.makedirs(checkpoint_dir, exist_ok=True)
     print(checkpoint_dir)
 
     # Checkpoint 있을 시 해당 체크포인트부터 다시 진행
     if len(glob.glob(os.path.join(checkpoint_dir, '*.pth'))) >= 1:
-        checkpoint = torch.load(glob.glob(os.path.join(checkpoint_dir, '*.pth'))[-1], map_location=device)
+        checkpoint_path = glob.glob(os.path.join(os.getcwd().split(os.sep + "src")[0], "checkpoint", dataset_name, '*.pth'))
+        checkpoint_path = pd.DataFrame({'path': checkpoint_path, 'name': list(map(lambda x: os.path.basename(x), checkpoint_path))})
+        checkpoint_path.sort_values('name', ascending=True, inplace=True)
+        checkpoint_path = list(checkpoint_path.path)
+
+        checkpoint = torch.load(checkpoint_path[-1], map_location=device)
         epoch = checkpoint['epoch']
         netG_A2B.load_state_dict(checkpoint["netG_A2B_state_dict"])
         netG_B2A.load_state_dict(checkpoint["netG_B2A_state_dict"])

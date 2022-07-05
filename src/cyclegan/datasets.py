@@ -13,7 +13,7 @@ def pil_loader(path):
 
 
 class CycleGANDataset(DataLoader):
-    def __init__(self, dataset_dir, styles, transforms):
+    def __init__(self, dataset_dir, styles, transforms, random_mode=False):
         """
         CycleGAN 전용으로 만들어 둔 클래스입니다.
         데이터셋 경로 내에 클래스 별 폴더를 만들어 이미지를 넣어 두시고, styles에 StyleTransfer를 원하는 클래스 리스트를 적으시면 됩니다.
@@ -31,6 +31,7 @@ class CycleGANDataset(DataLoader):
         self.transforms = transforms
         self.image_path_A = glob.glob(os.path.join(dataset_dir, styles[0] ,'*')) # styles[0] : A
         self.image_path_B = []
+        self.random_mode = random_mode # 클래스를 인덱스 1:1 대응할지 B를 랜덤셔플하여 대응할지 여부
 
         # styles[1]이 "all"일 때는 style[0] 외의 모든 폴더의 이미지를 보게끔 설정
         if styles[1] == 'all':
@@ -58,6 +59,10 @@ class CycleGANDataset(DataLoader):
     def __getitem__(self, idx):
 
         item_a = self.transforms(Image.open(self.image_path_A[idx]))
-        item_b = self.transforms(Image.open(self.image_path_B[idx]))
+        if self.random_mode: # random_mode시 item_b를 인덱스 말고 랜덤하게 추출
+            random.seed(50)
+            item_b = self.transforms(Image.open(random.sample(self.image_path_B, 1)[0]))
+        else:
+            item_b = self.transforms(Image.open(self.image_path_B[idx]))
 
         return [item_a, item_b]
