@@ -23,6 +23,7 @@ parser.add_argument("--epoch", type=int, default=1000)
 parser.add_argument("--batch_size", type=int, default=1)
 parser.add_argument("--dataset_path", type=str,
                     default=os.path.join(os.getcwd().split("src")[0], "datasets", "horse2zebra"))
+parser.add_argument("--dataset_name", type=str, default=None)
 parser.add_argument("--size", type=int, default=256)
 parser.add_argument("--lambda_ide", type=float, default=10)
 parser.add_argument("--lr", type=float, default=2e-4)
@@ -77,7 +78,10 @@ def train():
     dataloader = DataLoader(
         CycleGANDataset(args.dataset_path, [args.class_a, args.class_b], transform))
 
-    dataset_name = os.path.basename(args.dataset_path)
+    if args.dataset_name == None:
+        dataset_name = os.path.basename(args.dataset_path)
+    else:
+        dataset_name = args.dataset_name
 
     pool_fake_A = ImagePool(args.pool_size)
     pool_fake_B = ImagePool(args.pool_size)

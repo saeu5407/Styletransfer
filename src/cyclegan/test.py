@@ -15,6 +15,7 @@ from networks import CycleGANGenerator, CycleGANDiscriminator
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset_path", type=str, default=os.path.join(os.getcwd().split(os.sep + "src")[0], "datasets", "apple2orange"))
+parser.add_argument("--dataset_name", type=str, default=None)
 parser.add_argument("--class_a", type=str, default='testA')
 parser.add_argument("--class_b", type=str, default='testB')
 parser.add_argument("--idx", type=int, default=2)
@@ -112,7 +113,11 @@ if __name__ == "__main__":
     os.environ["NUMEXPR_NUM_THREADS"] = "1"
     os.environ["OMP_NUM_THREADS"] = "1"
 
-    dataset_name = os.path.basename(args.dataset_path)
+    if args.dataset_name == None:
+        dataset_name = os.path.basename(args.dataset_path)
+    else:
+        dataset_name = args.dataset_name
+
     class_path = [args.class_a, args.class_b]
 
     # test
