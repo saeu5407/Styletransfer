@@ -31,6 +31,7 @@ parser.add_argument("--pool_size", type=int, default=50)
 parser.add_argument("--identity", action="store_true")
 parser.add_argument("--class_a", type=str, default='trainA')
 parser.add_argument("--class_b", type=str, default='trainB')
+parser.add_argument("--save_cycle", type=int, default=50)
 
 args = parser.parse_args()
 
